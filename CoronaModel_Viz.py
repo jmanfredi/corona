@@ -1,5 +1,6 @@
 from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
+from mesa.visualization.modules import ChartModule
 
 from CoronaModel import *
 
@@ -27,8 +28,14 @@ def agent_portrayal(agent):
 
 grid = CanvasGrid(agent_portrayal, 10, 10, 500, 500)
 
+chart = ChartModule([{"Label": "NumAlives","Color": "Black"},
+                     {"Label": "NumCarriers","Color": "Red"},
+                     {"Label": "NumCureds","Color": "Green"},
+                     {"Label": "NumDeads","Color": "Orange"}],
+                      data_collector_name='datacollector')
+
 server = ModularServer(CoronaModel,
-                       [grid],
+                       [grid, chart],
                        "Corona Model",
                        {"N":50, "width":10, "height":10})
 server.port = 8521

@@ -26,17 +26,23 @@ def agent_portrayal(agent):
 
     return portrayal
 
-grid = CanvasGrid(agent_portrayal, 10, 10, 500, 500)
+# Full model
+grid = CanvasGrid(agent_portrayal, 40, 40, 500, 500)
+# Simple example
+#grid = CanvasGrid(agent_portrayal, 4, 4, 500, 500)
 
-chart = ChartModule([{"Label": "NumAlives","Color": "Black"},
-                     {"Label": "NumCarriers","Color": "Red"},
-                     {"Label": "NumCureds","Color": "Green"},
-                     {"Label": "NumDeads","Color": "Orange"}],
-                      data_collector_name='datacollector')
+chart = ChartModule(#[{"Label": "Alive","Color": "Black"},
+                     [{"Label": "NumCarriers","Color": "Red"},
+                     {"Label": "NumCureds","Color": "Green"}],
+                     #{"Label": "NumDeads","Color": "Orange"}],
+                     canvas_height = 200,
+                     canvas_width = 500,
+                     data_collector_name='datacollector')
 
 server = ModularServer(CoronaModel,
                        [grid, chart],
                        "Corona Model",
-                       {"N":50, "width":10, "height":10})
+#                       {"N":2, "width":4, "height":4})
+                       {"N":1000, "width":40, "height":40, "sd_step":-20})
 server.port = 8521
 server.launch()

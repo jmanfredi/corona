@@ -19,7 +19,7 @@ def get_num_cureds(model):
     return num_cureds
 
 def get_num_deads(model):
-    person_deads = [ abs(person.alive - 1) for person in model.schedule.agents]
+    person_deads = [ abs(person.alive - 1) for person in model.schedule.agents ]
     num_deads = sum ( i for i in person_deads )
     return num_deads
 
@@ -42,28 +42,35 @@ class Person(Agent):
         self.carrier = 0
         self.sickdays = 0
         self.transfers = 0
+        self.interactions = 0
         self.cured = 0 # assuming immunity after recovery
+        self.socialdist = 0
 
     def step(self):
         # Move around, interact with other agents
         if self.alive == 1:
-            # Move
-            self.move()
+            # Move, unless social distancing
+            if self.socialdist == 0:
+                self.move()
 
-            # Interact with neighbors
+            # Interact with neighbors (one way)
             if self.carrier == 1:
                 self.infect()
 
                 # Check to see if I die
-                if self.random.uniform(0,1) < self.model.cfr:
+                if self.random.uniform(0,1) < self.model.deathrate:
                     self.alive = 0
                     self.carrier = 0
                 else:
                     # Increment sick days
                     self.sickdays = self.sickdays + 1
+                    if self.model.socialdist_step < 0 and self.socialdist == 0:  
+                        if self.sickdays > 5 and self.random.uniform(0,1) < 0.8:
+                            self.socialdist = 1
                     if self.sickdays > 14:
                         self.cured = 1
                         self.carrier = 0
+                        self.socialdist = 0
 
 
 
@@ -82,24 +89,25 @@ class Person(Agent):
         cellmates = self.model.grid.get_cell_list_contents([self.pos])
         if len(cellmates) > 1:
             for buddy in cellmates:
-                if (self.random.uniform(0,1) < self.model.ir and 
+                self.interactions = self.interactions + 1
+                if (self.random.uniform(0,1) < self.model.infrate and 
                   buddy.cured == 0 and
                   buddy.alive == 1 and
                   buddy.carrier == 0):
                     self.transfers = self.transfers + 1
                     buddy.carrier = 1
 
-
-
 class CoronaModel(Model):
     """A model with N persons that tracks who gets sick, and when"""
-    def __init__(self, N, width, height):
+    def __init__(self, N, width, height, sd_step = 50):
         self.num_agents = N
         self.grid = MultiGrid(width, height, True)
         self.schedule = RandomActivation(self)
         self.running = True
-        self.cfr = 0.031
-        self.ir = 1.0
+        self.deathrate = 0.0022 #1 - (14th root of 0.97)
+        self.infrate = 1.0
+        self.step_index = 0
+        self.socialdist_step = sd_step
 
         # Create agents
         for i in range (self.num_agents):
@@ -123,10 +131,20 @@ class CoronaModel(Model):
                              "Carrier": "carrier",
                              "Cured": "cured",
                              "SickDays": "sickdays",
-                             "Transfers": "transfers"})
+                             "Transfers": "transfers",
+                             "Interactions": "interactions"})
 
     def step(self):
         # Advance the model by one step
+        self.step_index = self.step_index + 1
+
+        # When we reach the social distancing threshold, change 
+        # 80 percent of agents
+        if (self.step_index == self.socialdist_step):
+            for person in self.schedule.agents:
+                if self.random.uniform(0,1) < 0.8:
+                    person.socialdist = 1
+
         self.datacollector.collect(self)
         self.schedule.step()
 
